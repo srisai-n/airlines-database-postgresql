@@ -1,0 +1,106 @@
+GROUP 2G - AIRLINES DATABASE - RETRIEVAL QUERIES
+
+1) Retrieve details of top 10 pilots with highest experience (Hint: Experience is decided on the basis of starting date).
+
+select *
+from employee
+where designation='Pilot'
+order by startdate
+limit 10;
+
+2) Retrieve all senior citizens who traveled to Bangkok in the flight departing at 13:15 hrs from Kolkata on 15th July 2016.
+
+select passenger.*
+from travel_details natural join psgr_details natural join passenger
+where originaid='CCU' and destaid='BKK' and deptimestamp='2016-07-15 13:15:00'
+and extract(year from deptimestamp)-extract(year from dob)>=60;
+
+3) Retrieve the scheduled route of flight with id='001' on 14th July 2016 after 16:00 hrs.
+
+select *
+from flightschedule natural join schedule
+where flightid='001' and extract(day from deptimestamp)='14' and extract(month from deptimestamp)='07'
+and extract(year from deptimestamp)='2016' and extract(hour from deptimestamp)>16
+order by deptimestamp;
+
+4) Retrieve details of all the flights operated by the airlines that have more than one stop in their route (Note: Flights with stops are different from connecting flights).
+
+select *
+from (select scheduleid
+from stops
+group by scheduleid
+having count(stops)>1) as s natural join schedule natural join stops;
+
+5) Retrieve details of all passengers who traveled from Hyderabad on 14th July 2016 to Delhi via Kolkata.
+
+(select passenger.*
+from travel_details natural join psgr_details natural join passenger
+where originaid='HYD' and destaid='CCU' and extract(day from deptimestamp)='14' and extract(month from deptimestamp)='07'
+and extract(year from deptimestamp)='2016')
+intersect
+(select passenger.*
+from travel_details natural join psgr_details natural join passenger
+where originaid='CCU' and destaid='DEL' and extract(day from deptimestamp)='14' and extract(month from deptimestamp)='07'
+and extract(year from deptimestamp)='2016');
+
+6) Retrieve details of all the direct flights from Delhi to Mumbai on 14th July 2016.
+
+select *
+from flightschedule natural join schedule
+where originaid='DEL' and destaid='BOM' and extract(day from deptimestamp)='14'
+and extract(month from deptimestamp)='07' and extract(year from deptimestamp)='2016'
+and scheduleid not in (select scheduleid from stops);
+
+7) Retrieve the user with highest amount of reward points from each agency (Note : 1 reward point is awarded for every 100 rupees spent).
+
+select *
+from ((select agencyid,max(rewpts) as rewpts
+from (select emailid,agencyid,sum(charges)/100 as rewpts
+from reservation
+group by emailid,agencyid) as s
+group by agencyid
+order by agencyid) as x natural join
+(select emailid,agencyid,sum(charges)/100 as rewpts
+from reservation
+group by emailid,agencyid) as y) natural join useraccount;
+
+8) Retrieve top five busiest routes from 14th to 16th July 2016 based on the number of passengers travelling in the route.
+
+select schedule.*,count(psgrid) as psgr_count
+from schedule natural join flightschedule natural join travel_details natural join psgr_details
+where (extract(day from deptimestamp)>='14' and extract(day from deptimestamp)<='16' and extract(month from deptimestamp)='07'
+and extract(year from deptimestamp)='2016')
+group by scheduleid
+order by psgr_count desc
+limit 5;
+
+9) Retrieve three routes with least amount of travelled passengers from 14th to 16st July 2016.
+
+select schedule.*,count(psgrid) as psgr_count
+from schedule natural join flightschedule natural join travel_details natural join psgr_details
+where (extract(day from deptimestamp)>='14' and extract(day from deptimestamp)<='16' and extract(month from deptimestamp)='07'
+and extract(year from deptimestamp)='2016')
+group by scheduleid
+order by psgr_count asc
+limit 3;
+
+10) Retrieve agency details and number of reservations made till date through the agencies in the decreasing order of number of reservations.
+
+select agency.*,count(pnr) as resvn_count
+from reservation natural join agency
+group by agency.agencyid
+order by resvn_count desc;
+
+11) Retrieve all the direct and stop flight schedules from airports Ahmedabad to Chennai (Query output should also include the details of the stops).
+
+select *
+from schedule as sc natural left join stops as st
+where originaid='AMD' and destaid='MAA'
+order by travelduration;
+
+Group Members -
+
+1) 201401072 - N. Srisai Karthik
+2) 201401075 - Deepit Patel
+3) 201401080 - P. Pranay Kumar Reddy
+4) 201401081 - Geolangsat Narzary

@@ -1,0 +1,150 @@
+﻿create schema airlines;
+set search_path to airlines;
+
+CREATE TABLE Passenger
+(
+  PsgrID VARCHAR(10) NOT NULL,
+  Fname VARCHAR(20) NOT NULL,
+  Lname VARCHAR(20) NOT NULL,
+  DOB DATE NOT NULL,
+  Sex CHAR(1) NOT NULL,
+  Nationality VARCHAR(15) NOT NULL,
+  PRIMARY KEY (PsgrID)
+);
+
+CREATE TABLE Flight
+(
+  FlightID VARCHAR(3) NOT NULL,
+  Model VARCHAR(15) NOT NULL,
+  Mfg_Year DATE NOT NULL,
+  cap_business INT NOT NULL,
+  cap_economy INT NOT NULL,
+  PRIMARY KEY (FlightID)
+);
+
+CREATE TABLE Airport
+(
+  AirportID CHAR(3) NOT NULL,
+  AirportName VARCHAR(30) NOT NULL,
+  Type CHAR(1) NOT NULL,
+  City VARCHAR(20) NOT NULL,
+  State VARCHAR(20) NOT NULL,
+  Country VARCHAR(20) NOT NULL,
+  PRIMARY KEY (AirportID)
+);
+
+CREATE TABLE Agency
+(
+  AgencyID VARCHAR(2) NOT NULL,
+  AgencyName VARCHAR(15) NOT NULL,
+  PRIMARY KEY (AgencyID)
+);
+
+CREATE TABLE UserAccount
+(
+  EmailID VARCHAR(35) NOT NULL,
+  AgencyID VARCHAR(2) NOT NULL,
+  ContactNumber VARCHAR(20) NOT NULL,
+  PRIMARY KEY (EmailID, AgencyID),
+  FOREIGN KEY (AgencyID) REFERENCES Agency(AgencyID)
+);
+
+CREATE TABLE Reservation
+(
+  PNR VARCHAR(7) NOT NULL,
+  EmailID VARCHAR(35) NOT NULL,
+  AgencyID VARCHAR(2) NOT NULL,
+  Type CHAR(1) NOT NULL,
+  BookingDate DATE NOT NULL,
+  PaymentMode VARCHAR(15) NOT NULL,
+  Charges FLOAT NOT NULL,
+  PRIMARY KEY (PNR),
+  FOREIGN KEY (EmailID, AgencyID) REFERENCES UserAccount(EmailID, AgencyID)
+);
+
+CREATE TABLE Discount
+(
+  PNR VARCHAR(7) NOT NULL,
+  CouponCode VARCHAR(10) NOT NULL,
+  Amount FLOAT NOT NULL,
+  PRIMARY KEY (PNR),
+  FOREIGN KEY (PNR) REFERENCES Reservation(PNR)
+);
+
+CREATE TABLE Schedule
+(
+  ScheduleID VARCHAR(6) NOT NULL,
+  OriginAID CHAR(3) NOT NULL,
+  DestAID CHAR(3) NOT NULL,
+  TravelDuration INTERVAL NOT NULL,
+  PRIMARY KEY (ScheduleID),
+  FOREIGN KEY (OriginAID) REFERENCES Airport(AirportID),
+  FOREIGN KEY (DestAID) REFERENCES Airport(AirportID)
+);
+
+CREATE TABLE Stops
+(
+  ScheduleID VARCHAR(6) NOT NULL,
+  StopAID CHAR(3) NOT NULL,
+  ArrTimeAfterDep INTERVAL NOT NULL,
+  StopDuration INTERVAL NOT NULL,
+  PRIMARY KEY (ScheduleID, StopAID),
+  FOREIGN KEY (ScheduleID) REFERENCES Schedule(ScheduleID),
+  FOREIGN KEY (StopAID) REFERENCES Airport(AirportID)
+);
+
+CREATE TABLE FlightSchedule
+(
+  DepTimeStamp TIMESTAMP NOT NULL,
+  ScheduleID VARCHAR(6) NOT NULL,
+  FlightID VARCHAR(3) NOT NULL,
+  PRIMARY KEY (DepTimeStamp, ScheduleID),
+  FOREIGN KEY (ScheduleID) REFERENCES Schedule(ScheduleID),
+  FOREIGN KEY (FlightID) REFERENCES Flight(FlightID)
+);
+
+CREATE TABLE Employee
+(
+  EmpID VARCHAR(10) NOT NULL,
+  Fname VARCHAR(20) NOT NULL,
+  Lname VARCHAR(20) NOT NULL,
+  Sex CHAR(1) NOT NULL,
+  DOB DATE NOT NULL,
+  Designation VARCHAR(20) NOT NULL,
+  Salary_per_month FLOAT NOT NULL,
+  StartDate DATE NOT NULL,
+  PRIMARY KEY (EmpID)
+);
+
+CREATE TABLE Works_On
+(
+  EmpID VARCHAR(10) NOT NULL,
+  ScheduleID VARCHAR(6) NOT NULL,
+  DepTimeStamp TIMESTAMP NOT NULL,
+  PRIMARY KEY (EmpID, ScheduleID, DepTimeStamp),
+  FOREIGN KEY (EmpID) REFERENCES Employee(EmpID),
+  FOREIGN KEY (ScheduleID, DepTimeStamp) REFERENCES FlightSchedule(ScheduleID, DepTimeStamp)
+);
+
+CREATE TABLE Psgr_Details
+(
+  PNR VARCHAR(7) NOT NULL,
+  PsgrID VARCHAR(10) NOT NULL,
+  PRIMARY KEY (PNR, PsgrID),
+  FOREIGN KEY (PNR) REFERENCES Reservation(PNR),
+  FOREIGN KEY (PsgrID) REFERENCES Passenger(PsgrID)
+);
+
+CREATE TABLE Travel_Details
+(
+  PNR VARCHAR(7) NOT NULL,
+  ScheduleID VARCHAR(6) NOT NULL,
+  DepTimeStamp TIMESTAMP NOT NULL,
+  OriginAID CHAR(3) NOT NULL,
+  DestAID CHAR(3) NOT NULL,
+  PRIMARY KEY (PNR, ScheduleID, DepTimeStamp, OriginAID, DestAID),
+  FOREIGN KEY (PNR) REFERENCES Reservation(PNR),
+  FOREIGN KEY (ScheduleID, DepTimeStamp) REFERENCES FlightSchedule(ScheduleID, DepTimeStamp),
+  FOREIGN KEY (OriginAID) REFERENCES Airport(AirportID),
+  FOREIGN KEY (DestAID) REFERENCES Airport(AirportID)
+);

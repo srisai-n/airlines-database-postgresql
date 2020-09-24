@@ -1,0 +1,96 @@
+-- GROUP - 2G : STORED PROCEDURES
+
+-- 1) Finds all the possible travel combinations for flights with stops
+CREATE OR REPLACE FUNCTION flight_combinations(schid character varying(6)) RETURNS
+SETOF schedule AS $$
+    DECLARE
+	res schedule;
+    BEGIN
+    
+	FOR res in (select s.scheduleid,s.stopaid as originaid,st.stopaid as destaid,st.arrtimeafterdep-(s.arrtimeafterdep+s.stopduration) as traveltime
+	from (select stops.* from schedule natural join stops where schedule.scheduleid=schid) as s join stops as st
+	on s.arrtimeafterdep<st.arrtimeafterdep and s.scheduleid=st.scheduleid)
+	union (select * from schedule where schedule.scheduleid=schid)
+	union (select sc.scheduleid,sc.originaid,s.stopaid,s.arrtimeafterdep
+	from (select stops.* from schedule natural join stops where schedule.scheduleid=schid) as s natural join schedule as sc)
+	union (select sc.scheduleid,s.stopaid,sc.destaid,sc.travelduration-(s.arrtimeafterdep+s.stopduration)
+	from (select stops.* from schedule natural join stops where schedule.scheduleid=schid) as s natural join schedule as sc)
+	LOOP
+		return next res;
+	END LOOP;
+	
+    END;
+    $$ LANGUAGE plpgsql;
+
+select * from flight_combinations('6E1947');
+
+
+-- 2) Ranks the pilots based on working hours
+CREATE OR REPLACE FUNCTION pilot_rank(pilotid character varying(10)) RETURNS
+integer AS $$
+    DECLARE
+	res schedule;
+    BEGIN
+	
+    pilot_rank=0;
+	FOR emp in select employee.* from employee natural join works_on natural join flightschedule natural join schedule
+	where designation='Pilot'
+	group by empid
+	order by sum(travelduration) desc
+	LOOP
+		pilot_rank:=pilot_rank+1;
+		IF emp.empid=pilotid THEN
+			return pilot_rank;
+		END IF;
+	END LOOP;
+	
+    END;
+    $$ LANGUAGE plpgsql;
+
+select * from pilot_rank('22-3116856');
+
+
+-- 3) Returns the flight schedules from origin to destination airports from both direct and stop flights
+CREATE OR REPLACE FUNCTION find_flight(origin character(3), dest character(3)) RETURNS
+SETOF schedule AS $$
+    DECLARE
+	res schedule;
+	schid character varying(6);
+
+    BEGIN
+
+	FOR schid in select scheduleid from schedule
+	LOOP
+		FOR res in select * from flight_combinations(schid) WHERE originaid = origin and destaid = dest
+		LOOP
+			RETURN NEXT res;
+		END LOOP;
+	END LOOP;
+    END;
+    $$ LANGUAGE plpgsql;
+
+SELECT * FROM find_flight('BOM', 'MAA');
+
+
+-- 4) Returns the sequence number of each airport in the route of a flight with stops.
+CREATE TYPE seq_type AS (aid character(3), seqno integer);
+
+CREATE OR REPLACE FUNCTION schedule_seq(schid character varying(6)) RETURNS
+SETOF seq_type AS $$
+    DECLARE
+    res seq_type;
+
+	BEGIN
+	FOR res in SELECT aid, ROW_NUMBER() OVER (ORDER BY x.t_from_origin) AS seqno 
+	FROM (((SELECT originaid as aid, interval '00:00:00' as t_from_origin FROM schedule where scheduleid = schid)
+	UNION (SELECT stopaid as aid, arrtimeafterdep as t_from_origin FROM stops where scheduleid = schid)
+	UNION (SELECT destaid as aid, travelduration as t_from_origin FROM schedule where scheduleid = schid))
+	order by t_from_origin) as x
+	LOOP
+		return next res;
+
+	END LOOP;
+	END;
+	$$ LANGUAGE plpgsql;
+
+SELECT * FROM schedule_seq('6E7389');
